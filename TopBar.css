@@ -1,0 +1,165 @@
+import React from "react";
+import {
+  Typography,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@mui/material";
+import fetchModel from "../../lib/fetchModelData";
+
+class Favorites extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      photos: [],
+      selectedPhoto: null
+    };
+  }
+
+  componentDidMount() {
+    this.loadFavorites();
+  }
+
+  loadFavorites = () => {
+    const userId = this.props.loggedInUser._id;
+    fetchModel(`/favorites/${userId}`)
+      .then((response) => {
+        this.setState({ photos: response.data });
+      })
+      .catch((err) => {
+        console.error("Error loading favorites:", err);
+      });
+  };
+
+  handleRemove = async (photoId) => {
+    try {
+      await fetch(`/favorites/remove/${photoId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      // Refresh both the local list and the parent's loggedInUser.favorites
+      this.loadFavorites();
+      this.props.refreshUser();
+    } catch (err) {
+      console.error("Error removing favorite:", err);
+    }
+  };
+
+  handleThumbnailClick = (photo) => {
+    this.setState({ selectedPhoto: photo });
+  };
+
+  handleCloseModal = () => {
+    this.setState({ selectedPhoto: null });
+  };
+
+  render() {
+    const { photos, selectedPhoto } = this.state;
+
+    if (!this.props.loggedInUser) {
+      return <Typography>Please log in to view favorites.</Typography>;
+    }
+
+    return (
+      <div style={{ padding: "16px" }}>
+        <Typography variant="h5" gutterBottom>
+          Your Favorites
+        </Typography>
+
+        {photos.length === 0 ? (
+          <Typography>You have no favorite photos yet.</Typography>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+            {photos.map((photo) => (
+              <div
+                key={photo._id}
+                style={{ position: "relative", display: "inline-block" }}
+              >
+                {/* X button to remove */}
+                <button
+                  onClick={() => this.handleRemove(photo._id)}
+                  title="Remove from favorites"
+                  style={{
+                    position: "absolute",
+                    top: -10,
+                    right: -10,
+                    zIndex: 1,
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "50%",
+                    border: "none",
+                    backgroundColor: "rgba(0,0,0,0.7)",
+                    color: "white",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    lineHeight: "24px",
+                    textAlign: "center",
+                    padding: 0
+                  }}
+                >
+                  ×
+                </button>
+
+                {/* Thumbnail — click opens modal */}
+                <img
+                  src={`images/${photo.file_name}`}
+                  alt={photo.file_name}
+                  onClick={() => this.handleThumbnailClick(photo)}
+                  style={{
+                    width: "150px",
+                    height: "150px",
+                    objectFit: "cover",
+                    cursor: "pointer",
+                    borderRadius: "8px",
+                    display: "block"
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Modal — larger image + date caption */}
+        <Dialog
+          open={!!selectedPhoto}
+          onClose={this.handleCloseModal}
+          maxWidth="md"
+          fullWidth
+        >
+          {selectedPhoto && (
+            <>
+              <DialogTitle
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <Typography variant="subtitle1">
+                  {new Date(selectedPhoto.date_time).toLocaleString()}
+                </Typography>
+                <button
+                  onClick={this.handleCloseModal}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: "20px",
+                    cursor: "pointer",
+                    lineHeight: 1
+                  }}
+                >
+                  ×
+                </button>
+              </DialogTitle>
+              <DialogContent style={{ textAlign: "center" }}>
+                <img
+                  src={`images/${selectedPhoto.file_name}`}
+                  alt={selectedPhoto.file_name}
+                  style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: "4px" }}
+                />
+              </DialogContent>
+            </>
+          )}
+        </Dialog>
+      </div>
+    );
+  }
+}
+
+export default Favorites;

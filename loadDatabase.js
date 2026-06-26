@@ -1,0 +1,149 @@
+/**
+ * This Node.js program loads the Project 7 model data into Mongoose
+ * defined objects in a MongoDB database. It can be run with the command:
+ *     node loadDatabase.js
+ * Be sure to have an instance of the MongoDB running on the localhost.
+ *
+ * This script loads the data into the MongoDB database named 'project6'.
+ * In loads into collections named User and Photos. The Comments are added in
+ * the Photos of the comments. Any previous objects in those collections are
+ * discarded.
+ */
+
+// We use the Mongoose to define the schema stored in MongoDB.
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+mongoose.Promise = require("bluebird");
+mongoose.set("strictQuery", false);
+mongoose.connect("mongodb://127.0.0.1/project6");
+
+// Get the magic models we used in the previous projects.
+const models = require("./modelData/photoApp.js").models;
+
+// Load the Mongoose schema for Use and Photo
+const User = require("./schema/user.js");
+const Photo = require("./schema/photo.js");
+const SchemaInfo = require("./schema/schemaInfo.js");
+
+const versionString = "1.0";
+
+// We start by removing anything that existing in the collections.
+const removePromises = [
+  User.deleteMany({}),
+  Photo.deleteMany({}),
+  SchemaInfo.deleteMany({}),
+];
+
+Promise.all(removePromises)
+  .then(function () {
+    // Load the users into the User. Mongo assigns ids to objects so we record
+    // the assigned '_id' back into the model.userListModels so we have it
+    // later in the script.
+
+    const userModels = models.userListModel();
+    const mapFakeId2RealId = {};
+    
+    // Hash the test password
+    const testPassword = bcrypt.hashSync("weak", 10);
+    
+    const userPromises = userModels.map(function (user) {
+      return User.create({
+        first_name: user.first_name,
+        last_name: user.last_name,
+        location: user.location,
+        description: user.description,
+        occupation: user.occupation,
+        login_name: user.last_name.toLowerCase(),
+        password: testPassword,
+        favorites: []
+      })
+        .then(function (userObj) {
+          // Set the unique ID of the object. We use the MongoDB generated _id
+          // for now but we keep it distinct from the MongoDB ID so we can go to
+          // something prettier in the future since these show up in URLs, etc.
+          mapFakeId2RealId[user._id] = userObj._id;
+          user.objectID = userObj._id;
+          console.log(
+            "Adding user:",
+            user.first_name + " " + user.last_name,
+            " with ID ",
+            user.objectID
+          );
+          return userObj;
+        })
+        .catch(function (err) {
+          console.error("Error creating user", err);
+          throw err;
+        });
+    });
+
+    const allPromises = Promise.all(userPromises).then(function () {
+      // Once we've loaded all the users into the User collection we add all the
+      // photos. Note that the user_id of the photo is the MongoDB assigned id
+      // in the User object.
+      const photoModels = [];
+      const userIDs = Object.keys(mapFakeId2RealId);
+      userIDs.forEach(function (id) {
+        photoModels.push(...models.photoOfUserModel(id));
+      });
+
+      const photoPromises = photoModels.map(function (photo) {
+        return Photo.create({
+          file_name: photo.file_name,
+          date_time: photo.date_time,
+          user_id: mapFakeId2RealId[photo.user_id],
+        })
+          .then(function (photoObj) {
+            if (photo.comments && photo.comments.length > 0) {
+              photo.comments.forEach(function (comment) {
+                photoObj.comments.push({
+                  comment: comment.comment,
+                  date_time: comment.date_time,
+                  user_id: comment.user.objectID,
+                  _id: new mongoose.Types.ObjectId(),
+                });
+                console.log(
+                  "Adding comment of length %d by user %s to photo %s",
+                  comment.comment.length,
+                  comment.user.objectID,
+                  photo.file_name
+                );
+              });
+            }
+            return photoObj.save();
+          })
+          .catch(function (err) {
+            console.error("Error creating photo", err);
+            throw err;
+          });
+      });
+      return Promise.all(photoPromises).then(function () {
+        // Create the SchemaInfo object
+        return SchemaInfo.create({
+          version: versionString,
+        })
+          .then(function (schemaInfo) {
+            console.log(
+              "SchemaInfo object created with version ",
+              schemaInfo.version
+            );
+            return schemaInfo;
+          })
+          .catch(function (err) {
+            console.error("Error creating schemaInfo", err);
+            throw err;
+          });
+      });
+    });
+
+    return allPromises.then(function () {
+      return mongoose.disconnect()
+        .then(() => {
+          console.log("loadDatabase Completed");
+        });
+    });
+  })
+  .catch(function (err) {
+    console.error("Error in loadDatabase:", err);
+    process.exit(1);
+  });

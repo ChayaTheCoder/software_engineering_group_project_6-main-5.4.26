@@ -1,0 +1,57 @@
+/* Container for the entire photo feed */
+.user-photos-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 16px;
+}
+
+/* Individual photo card styling */
+.photo-card {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    overflow: hidden;
+}
+
+/* Ensuring images are responsive and maintain aspect ratio */
+.photo-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover; /* Crops image to fill container if dimensions vary */
+}
+
+/* Comment section spacing */
+.comment-section {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.comment-section:last-child {
+    border-bottom: none;
+}
+
+/* Link styling for commenter names */
+.comment-section a {
+    text-decoration: none;
+    color: #1976d2; /* MUI Primary Blue */
+    font-weight: 600;
+}
+
+.comment-section a:hover {
+    text-decoration: underline;
+}
+
+/* Date/Time secondary text styling */
+.comment-date {
+    font-size: 0.75rem;
+    color: #757575;
+    margin-left: 8px;
+}
+
+/* Mobile responsiveness: ensures cards take full width on small screens */
+@media (max-width: 600px) {
+    .user-photos-container {
+        padding: 0 8px;
+    }
+}

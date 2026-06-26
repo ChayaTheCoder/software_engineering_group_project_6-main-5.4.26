@@ -1,0 +1,335 @@
+import React from 'react';
+import {
+  Typography, Button, Paper, Grid, TextField
+} from '@mui/material';
+
+class LoginRegister extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      loginName: '',
+      password: '',
+      loginError: '',
+      loginMode: true, // true = login, false = register
+
+      registerForm: {
+        first_name: '',
+        last_name: '',
+        location: '',
+        description: '',
+        occupation: '',
+        login_name: '',
+        password: '',
+        confirm_password: ''
+      }
+    };
+  }
+
+  // -------------------------
+  // LOGIN HANDLERS
+  // -------------------------
+
+  handleLoginNameChange = (event) => {
+    this.setState({ loginName: event.target.value, loginError: '' });
+  };
+
+  handlePasswordChange = (event) => {
+    this.setState({ password: event.target.value, loginError: '' });
+  };
+
+  handleLogin = async () => {
+    if (!this.state.loginName.trim() || !this.state.password) {
+      this.setState({ loginError: 'Please enter both login name and password' });
+      return;
+    }
+
+    try {
+      const response = await fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          login_name: this.state.loginName.trim(),
+          password: this.state.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        this.setState({ loginError: data });
+        return;
+      }
+
+      // Backend returns the user object directly
+      this.props.onLogin(data);
+
+    } catch (error) {
+      console.error('Login error:', error);
+      this.setState({ loginError: 'Network error. Please try again.' });
+    }
+  };
+
+  // -------------------------
+  // REGISTRATION HANDLERS
+  // -------------------------
+
+  handleRegisterChange = (field) => (event) => {
+    this.setState({
+      registerForm: {
+        ...this.state.registerForm,
+        [field]: event.target.value
+      },
+      loginError: ''
+    });
+  };
+
+  handleRegister = async () => {
+    const form = this.state.registerForm;
+
+    // Required fields
+    if (!form.first_name || !form.last_name || !form.login_name || !form.password) {
+      this.setState({ loginError: 'Please fill in all required fields' });
+      return;
+    }
+
+    // Password match check
+    if (form.password !== form.confirm_password) {
+      this.setState({ loginError: 'Passwords do not match' });
+      return;
+    }
+
+    try {
+      const response = await fetch('/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        this.setState({ loginError: data });
+        return;
+      }
+
+      // SUCCESS MESSAGE + CLEAR FORM 
+      this.setState({
+        loginError: "Registration successful!",
+        registerForm: {
+          first_name: "",
+          last_name: "",
+          location: "",
+          description: "",
+          occupation: "",
+          login_name: "",
+          password: "",
+          confirm_password: ""
+        }
+      });
+
+      // Auto-login after successful registration
+      const loginResponse = await fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          login_name: form.login_name,
+          password: form.password
+        })
+      });
+
+      const loginData = await loginResponse.json();
+
+      if (!loginResponse.ok) {
+        this.setState({
+          loginError: 'Registration succeeded but login failed. Please log in manually.'
+        });
+        return;
+      }
+
+      this.props.onLogin(loginData);
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      this.setState({ loginError: 'Network error. Please try again.' });
+    }
+  };
+
+  // -------------------------
+  // MODE TOGGLE
+  // -------------------------
+
+  toggleMode = () => {
+    this.setState({ loginMode: !this.state.loginMode, loginError: '' });
+  };
+
+  // -------------------------
+  // RENDER
+  // -------------------------
+
+  render() {
+    return (
+      <Grid container spacing={4} justifyContent="center">
+        <Grid item xs={12} sm={8} md={6}>
+          <Paper style={{ padding: '40px', marginTop: '20px' }}>
+            <Typography variant="h4" gutterBottom align="center">
+              {this.state.loginMode ? 'Login to PhotoShare' : 'Register for PhotoShare'}
+            </Typography>
+
+            {this.state.loginMode ? (
+              // -------------------------
+              // LOGIN FORM
+              // -------------------------
+              <div>
+                <TextField
+                  fullWidth
+                  label="Login Name"
+                  value={this.state.loginName}
+                  onChange={this.handleLoginNameChange}
+                  style={{ marginBottom: '15px' }}
+                  error={!!this.state.loginError}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Password"
+                  type="password"
+                  value={this.state.password}
+                  onChange={this.handlePasswordChange}
+                  style={{ marginBottom: '10px' }}
+                  error={!!this.state.loginError}
+                />
+
+                {this.state.loginError && (
+                  <Typography variant="body2" color="error" style={{ marginBottom: '15px' }}>
+                    {this.state.loginError}
+                  </Typography>
+                )}
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={this.handleLogin}
+                  disabled={!this.state.loginName.trim() || !this.state.password}
+                  fullWidth
+                  style={{ marginBottom: '20px' }}
+                >
+                  Login
+                </Button>
+              </div>
+            ) : (
+              // -------------------------
+              // REGISTRATION FORM
+              // -------------------------
+              <div>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      label="First Name"
+                      value={this.state.registerForm.first_name}
+                      onChange={this.handleRegisterChange('first_name')}
+                      margin="normal"
+                    />
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      label="Last Name"
+                      value={this.state.registerForm.last_name}
+                      onChange={this.handleRegisterChange('last_name')}
+                      margin="normal"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Location"
+                      value={this.state.registerForm.location}
+                      onChange={this.handleRegisterChange('location')}
+                      margin="normal"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Login Name"
+                      value={this.state.registerForm.login_name}
+                      onChange={this.handleRegisterChange('login_name')}
+                      margin="normal"
+                      required
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Password"
+                      type="password"
+                      value={this.state.registerForm.password}
+                      onChange={this.handleRegisterChange('password')}
+                      margin="normal"
+                      required
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Confirm Password"
+                      type="password"
+                      value={this.state.registerForm.confirm_password}
+                      onChange={this.handleRegisterChange('confirm_password')}
+                      margin="normal"
+                      required
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Occupation"
+                      value={this.state.registerForm.occupation}
+                      onChange={this.handleRegisterChange('occupation')}
+                      margin="normal"
+                    />
+                  </Grid>
+                </Grid>
+
+                {this.state.loginError && (
+                  <Typography variant="body2" color="error" style={{ marginTop: '10px' }}>
+                    {this.state.loginError}
+                  </Typography>
+                )}
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={this.handleRegister}
+                  disabled={
+                    !this.state.registerForm.first_name ||
+                    !this.state.registerForm.last_name ||
+                    !this.state.registerForm.login_name ||
+                    !this.state.registerForm.password
+                  }
+                  fullWidth
+                  style={{ marginTop: '20px', marginBottom: '20px' }}
+                >
+                  Register
+                </Button>
+              </div>
+            )}
+
+            <Button variant="outlined" onClick={this.toggleMode} fullWidth>
+              {this.state.loginMode ? 'Need to register?' : 'Already have an account?'}
+            </Button>
+          </Paper>
+        </Grid>
+      </Grid>
+    );
+  }
+}
+
+export default LoginRegister;

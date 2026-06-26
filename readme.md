@@ -1,0 +1,10 @@
+# Photo App Scrum Team Group 1
+https://docs.google.com/document/d/1Fpc5SG9WfFMGxecoT88M2Tt-ffb9Todi6WZ_uIyvmIk/edit?usp=sharing 
+## Product Owner
+ITSC-3155
+## Scrum Manager
+Lew Price
+## Developers
+- Michaya Mohamed
+- Ana Jackson
+- Caden Medlin

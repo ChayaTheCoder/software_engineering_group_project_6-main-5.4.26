@@ -1,0 +1,69 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import {
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  Typography
+} from '@mui/material';
+import './userList.css';
+import fetchModel from '../../lib/fetchModelData';
+
+class UserList extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      users: [],
+      error: null
+    };
+  }
+
+  componentDidMount() {
+    this.fetchUsers();
+  }
+
+  fetchUsers = () => {
+    fetchModel('/user/list')
+      .then((response) => {
+        this.setState({ users: response.data, error: null });
+      })
+      .catch((error) => {
+        console.error('Error fetching users:', error);
+        this.setState({ error: 'Failed to load users. Please log in.' });
+      });
+  };
+
+  render() {
+    if (this.state.error) {
+      return (
+        <Paper className="user-list-container">
+          <Typography variant="body2" color="error" style={{ padding: '16px' }}>
+            {this.state.error}
+          </Typography>
+        </Paper>
+      );
+    }
+
+    return (
+      <Paper className="user-list-container">
+        <List>
+          {this.state.users.map((user) => (
+            <ListItem
+              button
+              component={Link}
+              to={`/users/${user._id}`}
+              key={user._id}
+            >
+              <ListItemText
+                primary={`${user.first_name} ${user.last_name}`}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Paper>
+    );
+  }
+}
+
+export default UserList;

@@ -1,0 +1,71 @@
+import React from 'react';
+import {
+  Typography, Button, Select, MenuItem, FormControl, InputLabel, Paper
+} from '@mui/material';
+import fetchModel from '../../lib/fetchModelData';
+
+class Login extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      users: [],
+      selectedUserId: ''
+    };
+  }
+
+  componentDidMount() {
+    fetchModel('/user/list')
+      .then((response) => {
+        this.setState({ users: response.data });
+      })
+      .catch((error) => {
+        console.error('Error fetching users:', error);
+      });
+  }
+
+  handleUserChange = (event) => {
+    this.setState({ selectedUserId: event.target.value });
+  };
+
+  handleLogin = () => {
+    if (this.state.selectedUserId) {
+      const selectedUser = this.state.users.find(user => user._id === this.state.selectedUserId);
+      this.props.onLogin(selectedUser);
+    }
+  };
+
+  render() {
+    return (
+      <Paper style={{ padding: '20px', maxWidth: '400px', margin: '20px auto' }}>
+        <Typography variant="h5" gutterBottom>
+          Login to PhotoShare
+        </Typography>
+        <FormControl fullWidth style={{ marginBottom: '20px' }}>
+          <InputLabel>Select User</InputLabel>
+          <Select
+            value={this.state.selectedUserId}
+            onChange={this.handleUserChange}
+            label="Select User"
+          >
+            {this.state.users.map((user) => (
+              <MenuItem key={user._id} value={user._id}>
+                {user.first_name} {user.last_name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={this.handleLogin}
+          disabled={!this.state.selectedUserId}
+          fullWidth
+        >
+          Login
+        </Button>
+      </Paper>
+    );
+  }
+}
+
+export default Login;

@@ -1,0 +1,75 @@
+import { Link } from "react-router-dom";
+import React from "react";
+import { Typography } from "@mui/material";
+import "./userDetail.css";
+import axios from 'axios';
+
+class UserDetail extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      user: undefined
+    };
+  }
+
+  componentDidMount() {
+    const new_user_id = this.props.match.params.userId;
+    this.handleUserChange(new_user_id);
+  }
+
+  componentDidUpdate() {
+    const new_user_id = this.props.match.params.userId;
+    const current_user_id = this.state.user?._id;
+    if (current_user_id !== new_user_id) {
+      this.handleUserChange(new_user_id);
+    }
+  }
+
+  handleUserChange(user_id) {
+    axios.get("/user/" + user_id)
+      .then((response) => {
+        const new_user = response.data;
+        this.setState({ user: new_user });
+      })
+      .catch((err) => {
+        console.error("Error loading user:", err);
+      });
+  }
+
+  render() {
+    const { user } = this.state;
+    const userId = this.props.match.params.userId;
+
+    if (!user) {
+      return <Typography>Loading...</Typography>;
+    }
+
+    return (
+      <div className="user-detail">
+        <Typography variant="h5">
+          {user.first_name} {user.last_name}
+        </Typography>
+
+        <Typography>
+          <strong>Location:</strong> {user.location}
+        </Typography>
+
+        <Typography>
+          <strong>Description:</strong> {user.description}
+        </Typography>
+
+        <Typography>
+          <strong>Occupation:</strong> {user.occupation}
+        </Typography>
+
+        <br />
+
+        <Link to={`/photos/${userId}`}>
+          View Photos
+        </Link>
+      </div>
+    );
+  }
+}
+
+export default UserDetail;

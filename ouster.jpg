@@ -1,0 +1,219 @@
+import React from 'react';
+import { Button, TextField, ImageListItem } from '@mui/material';
+import './userPhotos.css';
+import fetchModel from '../../lib/fetchModelData';
+
+class UserPhotos extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            user_id: undefined,
+            photos: undefined,
+            currentPhotoIndex: 0
+        };
+    }
+
+    componentDidMount() {
+        const { userId, photoId } = this.props.match.params;
+        this.handleUserChange(userId, photoId);
+    }
+
+    componentDidUpdate(prevProps) {
+        const new_user_id = this.props.match.params.userId;
+        const new_photoId = this.props.match.params.photoId;
+        const prev_user_id = prevProps.match.params.userId;
+        const prev_photoId = prevProps.match.params.photoId;
+
+        if (prev_user_id !== new_user_id) {
+            this.handleUserChange(new_user_id, new_photoId);
+        } else if (prev_photoId !== new_photoId) {
+            const { photos } = this.state;
+            if (photos && new_photoId) {
+                const index = photos.findIndex(photo => photo._id === new_photoId);
+                if (index !== -1) {
+                    this.setState({ currentPhotoIndex: index });
+                }
+            }
+        }
+    }
+
+    handleUserChange(user_id, photoId) {
+        fetchModel("/photosOfUser/" + user_id)
+            .then((response) => {
+                const photos = response.data;
+                let currentPhotoIndex = 0;
+
+                if (photoId && photos.length > 0) {
+                    const index = photos.findIndex(photo => photo._id === photoId);
+                    if (index !== -1) {
+                        currentPhotoIndex = index;
+                    }
+                }
+
+                this.setState({
+                    user_id: user_id,
+                    photos: photos,
+                    currentPhotoIndex
+                });
+            })
+            .catch((err) => {
+                console.error("Error loading photos:", err);
+            });
+        // Note: changeMainContent removed — TopBar handles its own context label
+    }
+
+    handlePrevious = () => {
+        const { currentPhotoIndex, photos, user_id } = this.state;
+        if (currentPhotoIndex > 0) {
+            const newIndex = currentPhotoIndex - 1;
+            this.setState({ currentPhotoIndex: newIndex });
+            const photoId = photos[newIndex]._id;
+            this.props.history.push(`/photos/${user_id}/${photoId}`);
+        }
+    };
+
+    handleNext = () => {
+        const { currentPhotoIndex, photos, user_id } = this.state;
+        if (currentPhotoIndex < photos.length - 1) {
+            const newIndex = currentPhotoIndex + 1;
+            this.setState({ currentPhotoIndex: newIndex });
+            const photoId = photos[newIndex]._id;
+            this.props.history.push(`/photos/${user_id}/${photoId}`);
+        }
+    };
+
+    isFavorited(photoId) {
+        const user = this.props.loggedInUser;
+        if (!user || !user.favorites) return false;
+        // favorites array contains ObjectId strings — compare as strings
+        return user.favorites.map(id => id.toString()).includes(photoId.toString());
+    }
+
+    handleFavorite = async (photoId) => {
+        try {
+            const response = await fetch(`/favorites/add/${photoId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Refresh loggedInUser in parent so isFavorited updates
+            this.props.refreshUser();
+        } catch (err) {
+            console.error("Error adding favorite:", err);
+        }
+    };
+
+    render() {
+        const { user_id, photos, currentPhotoIndex } = this.state;
+
+        if (!user_id || !photos) {
+            return <div />;
+        }
+
+        if (photos.length === 0) {
+            return <div>No photos to display.</div>;
+        }
+
+        const currentPhoto = photos[currentPhotoIndex];
+        const favorited = this.isFavorited(currentPhoto._id);
+
+        return (
+            <div>
+                <div>
+                    <Button variant="contained" component="a" href={"#/users/" + user_id}>
+                        User Detail
+                    </Button>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                    <Button onClick={this.handlePrevious} disabled={currentPhotoIndex === 0}>
+                        Previous
+                    </Button>
+                    <Button onClick={this.handleNext} disabled={currentPhotoIndex === photos.length - 1}>
+                        Next
+                    </Button>
+                </div>
+
+                <div key={currentPhoto._id}>
+                    <TextField
+                        label="Photo Date"
+                        variant="outlined"
+                        disabled
+                        fullWidth
+                        margin="normal"
+                        value={currentPhoto.date_time}
+                    />
+
+                    <ImageListItem key={currentPhoto.file_name}>
+                        <img
+                            src={`images/${currentPhoto.file_name}`}
+                            srcSet={`images/${currentPhoto.file_name}`}
+                            alt={currentPhoto.file_name}
+                            loading="lazy"
+                        />
+                    </ImageListItem>
+
+                    <Button
+                        variant="contained"
+                        color={favorited ? "success" : "primary"}
+                        disabled={favorited}
+                        onClick={() => this.handleFavorite(currentPhoto._id)}
+                        style={{ marginTop: "10px" }}
+                    >
+                        {favorited ? "✓ Favorited" : "Favorite"}
+                    </Button>
+
+                    {currentPhoto.comments && currentPhoto.comments.length > 0 ? (
+                        currentPhoto.comments.map((comment) => (
+                            <div key={comment._id}>
+                                <TextField
+                                    label="Comment Date"
+                                    variant="outlined"
+                                    disabled
+                                    fullWidth
+                                    margin="normal"
+                                    value={comment.date_time}
+                                />
+                                <a href={"#/users/" + comment.user._id}>
+                                    <TextField
+                                        label="Commenter"
+                                        variant="outlined"
+                                        disabled
+                                        fullWidth
+                                        margin="normal"
+                                        value={comment.user.first_name + " " + comment.user.last_name}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                </a>
+                                <TextField
+                                    label="Comment"
+                                    variant="outlined"
+                                    disabled
+                                    fullWidth
+                                    margin="normal"
+                                    multiline
+                                    rows={4}
+                                    value={comment.comment}
+                                />
+                            </div>
+                        ))
+                    ) : (
+                        <TextField
+                            label="No Comments"
+                            variant="outlined"
+                            disabled
+                            fullWidth
+                            margin="normal"
+                        />
+                    )}
+                </div>
+            </div>
+        );
+    }
+}
+
+export default UserPhotos;
