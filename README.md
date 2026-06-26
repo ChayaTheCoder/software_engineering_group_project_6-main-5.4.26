@@ -19,7 +19,7 @@ This project implements a **photo‑sharing web application** using **Node.js**,
 
 ## Directory Structure
 PhotoApp/
-├── backend/
+── backend/
 │   ├── webServer.js
 │   ├── loadDatabase.js
 │   ├── schema/
@@ -28,7 +28,9 @@ PhotoApp/
 │   │   └── schemaInfo.js
 │   └── modelData/
 │       └── photoApp.js
-├── frontend/
+
+
+── frontend/
 │   ├── components/
 │   ├── styles/
 │   ├── images/
